@@ -93,7 +93,7 @@ class InputHandler {
  * @typedef Body
  */
 class Body {
-	position = {x: 10, y: 10};
+	position = {x: 0, y: 0};
 	velocity = {x: 0, y: 0};
 	size = {width: 10, height: 10};
 	health = 100;
@@ -105,7 +105,7 @@ class Body {
 		// generate and assign the next body id
 		this.id = running_id++;
 		// add to the entity map
-		entities.set(this.id, this);
+		entities[this.id] = this;
 	}
 
 	/**
@@ -155,11 +155,7 @@ class Body {
 	 * Marks this body to be removed at the end of the update loop
 	 */
 	remove() {
-		console.log("ITEMS QUEUED FOR DELETION");
 		queued_entities_for_removal.push(this.id);
-	}
-	removeLaser() {
-		queued_entities_for_removal.push(this.laser_id);
 	}
 }
 
@@ -177,7 +173,7 @@ class Player extends Body
 		action_1: false
 	};
 	raw_input = {};
-	speed = 10;
+	speed = 250;
 	input_handler = null;
 	angle = 0;
 	poweredUp = false;
@@ -191,7 +187,6 @@ class Player extends Body
 	constructor() {
 		super();
 
-		
 		this.shotTime = 1;
 		this.score = 0;
 		this.timeAlive=0;
@@ -204,7 +199,7 @@ class Player extends Body
 		// we always want our new players to be at this location
 		this.position = {
 			x: config.canvas_size.width / 2,
-			y: config.canvas_size.height /2
+			y: config.canvas_size.height - 100
 		};
 		this.velocity = {x:this.speed,y:0}
 	}
@@ -260,7 +255,7 @@ class Player extends Body
 		if(this.controller.action_1 && this.shotTime <= 0){
 			//console.log("hLELO")
 			if(!this.poweredUp)
-				lasers.push(new laser(this.position.x,this.position.y,this.velocity.x,this.velocity.y,this.angle, false))
+				new laser(this.position.x,this.position.y,this.velocity.x,this.velocity.y,this.angle, false)
 
 			//new laser(this.position.x,this.position.y,this.velocity.x,this.velocity.y,this.angle, true)
 			else{
@@ -269,9 +264,9 @@ class Player extends Body
 				let newvx2 = (this.velocity.x - this.velocity.y) / Math.sqrt(2)
 				let newvy2 = (this.velocity.y + this.velocity.x) / Math.sqrt(2)
 
-				lasers.push(new laser(this.position.x,this.position.y,newvx,newvy,this.angle+Math.Pi/4, true))
-				lasers.push(new laser(this.position.x,this.position.y,newvx2,newvy2,this.angle-Math.PI/4, true))
-				lasers.push(new laser(this.position.x,this.position.y,this.velocity.x,this.velocity.y,this.angle, true))
+				new laser(this.position.x,this.position.y,newvx,newvy,this.angle+Math.Pi/4, true)
+				new laser(this.position.x,this.position.y,newvx2,newvy2,this.angle-Math.PI/4, true)
+				new laser(this.position.x,this.position.y,this.velocity.x,this.velocity.y,this.angle, true)
 			}
 
 			this.shotTime += 0.5
@@ -338,7 +333,7 @@ class Player extends Body
 
 
 /**
-* Represents an enemy body. Extends a Body by handling input binding and controller management.
+* Represents an player body. Extends a Body by handling input binding and controller management.
 * 
 * @typedef Enemy
 */
@@ -352,7 +347,7 @@ class Enemy extends Body {
 
 		this.ticker = Math.random()*5;
 
-		//start enemies above the canvas
+		//start ene	mies above the canvas
 		this.position = {
 			x: Math.random()*config.canvas_size.width,
 			y: 0 - 100
@@ -406,13 +401,10 @@ class Enemy extends Body {
 
 		// clip to screen
 		this.position.x = Math.min(Math.max(0, this.position.x), config.canvas_size.width);
-		this.position.y = Math.min(Math.max(0, this.position.y), config.canvas_size.height);
+		//this.position.y = Math.min(Math.max(0, this.position.y), config.canvas_size.height);
 
 		if(this.position.y > config.canvas_size.height)
-			if(typeof(this) != laser)
-				this.remove();
-			else 
-				this.removeLaser();
+			this.remove();
 	}
 
 
@@ -426,11 +418,9 @@ class laser extends Body {
 	speed=300;
 	angle=0;
 	isOrb=false;
-	
 
 	constructor(inx,iny,inVx,inVy,angle, isOrb){
-		this.laser_id = laser_id++;
-		lasers.set(this.id, this);
+		super();
 
 		this.isOrb = isOrb;
 		this.angle = angle;
@@ -443,19 +433,16 @@ class laser extends Body {
 		//if(inVx==0)
 
 		this.velocity = {x: inVx/Math.abs(inVx+0.3)*this.speed,y: inVy/Math.abs(inVy+0.3)*this.speed}
-		
-
-
-		laser_id++;
+		console.log(this.velocity)
 	}
 
 	update(delta_time){
 		super.update(delta_time);
 
 		if(this.position.y > config.canvas_size.height || this.position.y < 0)
-			this.removeLaser();
+			this.remove();
 		if(this.position.x > config.canvas_size.width || this.position.x < 0)
-			this.removeLaser();
+			this.remove();
 	}
 
 	draw(graphics) {
@@ -489,6 +476,12 @@ class laser extends Body {
 
 }
 
+/**
+ * spawner object used to summon new enemies over a certain interval
+ * 
+ * @typedef spawner
+ */
+
 class spawner {
 
 	timespent = 0;
@@ -501,19 +494,26 @@ class spawner {
 
 	update(delta_time) {
 		this.timespent += delta_time;
-		
+		//console.log(this.timespent)
+
 		if(this.timespent>5){
 			this.timespent=0;
 			for (let index = 0; index < 5; index++) {
-				var newGuy = new Enemy();
-				//entities.set(newGuy.id,newGuy);
-				console.log("NEW ENEMY ID: " + newGuy.id);
+				new Enemy()
 			}
 		}
 
 	}
 	
 }
+
+/**
+ * 
+ * class that acts as an object responsible for testing all relevant collisions
+ * 
+ * @typedef collisionChecker
+ * 
+ */
 
 class collisionChecker {
 
@@ -525,26 +525,48 @@ class collisionChecker {
 
 	update(delta_time){
 		this.timeSpent +=delta_time;
-		
-		for(var i=1; i<entities.size;i++)
-			if(entities.get(i) != undefined)
-			if (entities.get(0).x < entities.get(i).x + entities.get(i).width &&
-				entities.get(0).x + entities.get(0).width > entities.get(i).x &&
-				entities.get(0).y < entities.get(i).y + entities.get(i).height &&
-				entities.get(0).y + entities.get(0).height > entities.get(i).y){
+
+		Object.values(entities).forEach(entity => {
+			
+			if(entity instanceof Enemy){
+
+			if (player.position.x< entity.position.x + entity.size.width &&
+				player.position.x + player.size.width > entity.position.x &&
+				player.position.y < entity.position.y + entity.size.height &&
+				player.position.y + player.size.height > entity.position.y){
 					console.log("COLLISION DETECTED");
-					//remove(entities.get(i).id);
-					//entities.delete(entities.get(i).id);
+					entity.remove();
 					player.health -=5;
 
 
 				}
+			}
+		});
+
+		Object.values(entities).forEach(eni => {
+			Object.values(entities).forEach(las => {
+
+			if(eni instanceof Enemy && las instanceof laser)
+			if (eni.position.x< las.position.x + las.size.width &&
+				eni.position.x + eni.size.width > las.position.x &&
+				eni.position.y < las.position.y + las.size.height &&
+				eni.position.y + eni.size.height > las.position.y){
+					eni.remove();
+					las.remove();
+					player.enemiesKilled += 1;
+					
+				}
+				
+
+			});
+			
+		});
+		//updates score every collision check
+		player.score = Math.floor(30 * player.enemiesKilled + player.timeAlive)
 	}
 
-
-
-
 }
+
 
 
 /* 
@@ -621,13 +643,7 @@ var loop_count = 0;
 /** @type {Number} A counter that is used to assign bodies a unique identifier */
 var running_id = 0;
 
-/**@type {Number} A counter used to assign lasers a unique identifier */
-var laser_id = 0;
-
 /** @type {Object<Number, Body>} This is a map of body ids to body instances */
-var entities = null;
-
-/** @type {Object<Number, Body>} This is a map of laser ids to laser instances */
 var entities = null;
 
 /** @type {Array<Number>} This is an array of body ids to remove at the end of the update */
@@ -650,10 +666,9 @@ var collision_handler = null;
 function update(delta_time) {
 	// poll input
 	player.input_handler.pollController();
-	console.log("PLAYER COORDINATES: " + player.x,player.y)
 
 	// move entities
-	entities.forEach(entity => {
+	Object.values(entities).forEach(entity => {
 		entity.update(delta_time);
 	});
 
@@ -664,7 +679,6 @@ function update(delta_time) {
 
 	// remove enemies
 	queued_entities_for_removal.forEach(id => {
-		console.log("DELETED ITEMS");
 		delete entities[id];
 	})
 	queued_entities_for_removal = [];
@@ -720,6 +734,8 @@ function draw(graphics) {
  * 
  * @param {Number} curr_time Current time in milliseconds
  */
+
+
 function loop(curr_time) {
 	// convert time to seconds
 	curr_time /= 1000;
@@ -740,11 +756,19 @@ function loop(curr_time) {
 		last_time = curr_time;
 		loop_count++;
 
+		/**
+		 * Below are the statements for displaying the game statistics.
+		 * @param {none}
+		 * @return {void}
+		 * 
+		 */
+		
+
 		game_state.innerHTML = `<font color="red"> loop count ${loop_count} <br />
 								Time till next Shot: ${player.shotTime.toFixed(2)}<br />
 								Time Alive: ${player.timeAlive.toFixed(2)}<br />
 								Enemies killed: ${player.enemiesKilled}<br />
-								Score: ${player.score}<br /> 
+								Score: ${player.score}<br />
 								Health: ${player.health} <font>`;
 		
 	}
@@ -753,14 +777,11 @@ function loop(curr_time) {
 }
 
 function start() {
-	entities = new Map();
+	entities = [];
 	queued_entities_for_removal = [];
-	lasers = [];
 	player = new Player();
 
-	console.log("INITIAL COORDINATES ARE:" + player.x + player.y)
-	
-	console.log("PLAYER ID: " + player.id);
+	//entities[0] = player;
 	
 	//game_state.insertAdjacentHTML('afterend',`<br /> <pre>How to play the Game`)
 	enemy_spawner = new spawner()
